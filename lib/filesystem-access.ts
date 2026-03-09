@@ -142,7 +142,7 @@ export function processFileInputFiles(fileList: FileList): { files: LocalFile[],
     .filter(f => !f.includes('/')) // Only top-level
     .map(name => ({
       id: name,
-      name: name.replace(/[-_]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+      name: name.replace(/[-_]/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()),
       path: `/${name}`,
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -301,7 +301,7 @@ export async function getTopLevelFolders(handle: FileSystemDirectoryHandle): Pro
         if (entry.name !== 'node_modules' && entry.name !== '__pycache__') {
           folders.push({
             id: entry.name,
-            name: entry.name.replace(/[-_]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+            name: entry.name.replace(/[-_]/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()),
             path: `/${entry.name}`,
             handle: entry as FileSystemDirectoryHandle,
           });
