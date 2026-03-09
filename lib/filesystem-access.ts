@@ -234,8 +234,16 @@ export async function scanDirectory(
   }
   
   try {
-    for await (const entry of handle.entries()) {
-      const entryPath = basePath ? `${basePath}/${entry.name}` : `/${entry.name}`;
+  const iterator: any = (handle as any).entries
+    ? (handle as any).entries()
+    : (handle as any).values
+    ? (handle as any).values()
+    : (handle as any)[Symbol.asyncIterator]
+    ? (handle as any)
+    : [];
+  for await (const item of iterator) {
+    const entry = Array.isArray(item) ? item[1] : item;
+    const entryPath = basePath ? `${basePath}/${entry.name}` : `/${entry.name}`;
       
       if (entry.name.startsWith('.') || 
           entry.name === 'node_modules' ||
@@ -279,8 +287,16 @@ export async function scanDirectory(
 export async function getTopLevelFolders(handle: FileSystemDirectoryHandle): Promise<LocalFolder[]> {
   const folders: LocalFolder[] = [];
   
-  try {
-    for await (const entry of handle.entries()) {
+    try {
+    const iterator: any = (handle as any).values
+      ? (handle as any).values()
+      : (handle as any).entries
+      ? (handle as any).entries()
+      : (handle as any)[Symbol.asyncIterator]
+      ? (handle as any)
+      : [];
+    for await (const item of iterator) {
+      const entry = Array.isArray(item) ? item[1] : item;
       if (entry.kind === 'directory' && !entry.name.startsWith('.')) {
         if (entry.name !== 'node_modules' && entry.name !== '__pycache__') {
           folders.push({
