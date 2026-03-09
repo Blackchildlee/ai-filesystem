@@ -15,9 +15,16 @@ import {
   ChevronRight,
 } from "lucide-react";
 
+interface FolderItem {
+  id: string;
+  name: string;
+  path: string;
+}
+
 interface SidebarProps {
   activeSection: string;
   onSectionChange: (section: string) => void;
+  folders?: FolderItem[];
 }
 
 const navItems = [
@@ -29,13 +36,15 @@ const navItems = [
   { id: "trash", label: "Trash", icon: Trash2 },
 ];
 
-const quickAccess = [
-  { id: "documents", label: "Documents", path: "/documents" },
-  { id: "images", label: "Images", path: "/images" },
-  { id: "downloads", label: "Downloads", path: "/downloads" },
+const defaultFolders = [
+  { id: "documents", name: "Documents", path: "/Documents" },
+  { id: "images", name: "Images", path: "/Images" },
+  { id: "downloads", name: "Downloads", path: "/Downloads" },
 ];
 
-export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
+export function Sidebar({ activeSection, onSectionChange, folders }: SidebarProps) {
+  // Use provided folders or defaults
+  const quickAccessFolders = folders && folders.length > 0 ? folders : defaultFolders;
   const [quickAccessOpen, setQuickAccessOpen] = useState(true);
   
   return (
@@ -95,7 +104,7 @@ export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
           </button>
           {quickAccessOpen && (
             <ul className="space-y-0.5">
-              {quickAccess.map((item) => {
+              {quickAccessFolders.map((item) => {
                 const isActive = activeSection === `folder:${item.path}`;
                 return (
                   <li key={item.id}>
@@ -112,7 +121,7 @@ export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
                         "w-5 h-5",
                         isActive ? "text-[hsl(var(--primary))]" : "text-[hsl(var(--muted-foreground))]"
                       )} />
-                      <span>{item.label}</span>
+                      <span>{item.name}</span>
                     </button>
                   </li>
                 );

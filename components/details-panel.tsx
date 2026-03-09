@@ -21,6 +21,8 @@ import {
 interface DetailsPanelProps {
   file: FileItem | null;
   onClose: () => void;
+  onToggleStar?: (fileId: string) => void;
+  isStarred?: boolean;
 }
 
 function getFileIconComponent(mimeType: string) {
@@ -29,7 +31,7 @@ function getFileIconComponent(mimeType: string) {
   return File;
 }
 
-export function DetailsPanel({ file, onClose }: DetailsPanelProps) {
+export function DetailsPanel({ file, onClose, onToggleStar, isStarred }: DetailsPanelProps) {
   if (!file) return null;
 
   const Icon = getFileIconComponent(file.mimeType);
@@ -77,9 +79,15 @@ export function DetailsPanel({ file, onClose }: DetailsPanelProps) {
             <Download className="w-5 h-5 text-[hsl(var(--muted-foreground))]" />
             <span className="text-xs text-[hsl(var(--muted-foreground))]">Download</span>
           </button>
-          <button className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-[hsl(var(--subtle))] transition-colors">
-            <Star className="w-5 h-5 text-[hsl(var(--muted-foreground))]" />
-            <span className="text-xs text-[hsl(var(--muted-foreground))]">Star</span>
+          <button 
+            onClick={() => onToggleStar?.(file.id)}
+            className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-[hsl(var(--subtle))] transition-colors"
+          >
+            <Star className={cn(
+              "w-5 h-5",
+              isStarred ? "text-yellow-500 fill-yellow-500" : "text-[hsl(var(--muted-foreground))]"
+            )} />
+            <span className="text-xs text-[hsl(var(--muted-foreground))]">{isStarred ? "Unstar" : "Star"}</span>
           </button>
           <button className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-[hsl(var(--subtle))] transition-colors">
             <Trash2 className="w-5 h-5 text-[hsl(var(--muted-foreground))]" />

@@ -23,6 +23,8 @@ interface FileGridProps {
   selectedIds: Set<string>;
   onSelectFile: (id: string, multi: boolean) => void;
   onOpenFile: (file: FileItem) => void;
+  onToggleStar?: (fileId: string) => void;
+  starredIds?: Set<string>;
 }
 
 function getFileIconComponent(mimeType: string) {
@@ -53,6 +55,8 @@ export function FileGrid({
   selectedIds,
   onSelectFile,
   onOpenFile,
+  onToggleStar,
+  starredIds,
 }: FileGridProps) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 
@@ -105,17 +109,25 @@ export function FileGrid({
                 {isSelected && <Check className="w-3 h-3 text-[hsl(var(--primary-foreground))]" />}
               </div>
 
-              {/* More actions */}
+              {/* Star button */}
               <button
                 className={cn(
                   "absolute top-2 right-2 p-1 rounded transition-all",
-                  "opacity-0 group-hover:opacity-100 hover:bg-[hsl(var(--muted))]"
+                  starredIds?.has(file.id) 
+                    ? "opacity-100" 
+                    : "opacity-0 group-hover:opacity-100 hover:bg-[hsl(var(--muted))]"
                 )}
                 onClick={(e) => {
                   e.stopPropagation();
+                  onToggleStar?.(file.id);
                 }}
               >
-                <MoreVertical className="w-4 h-4 text-[hsl(var(--muted-foreground))]" />
+                <Star className={cn(
+                  "w-4 h-4",
+                  starredIds?.has(file.id) 
+                    ? "text-yellow-500 fill-yellow-500" 
+                    : "text-[hsl(var(--muted-foreground))]"
+                )} />
               </button>
 
               {/* Icon */}
