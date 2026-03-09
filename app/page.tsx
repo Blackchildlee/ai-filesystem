@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import useSWR from "swr";
 import { Sidebar } from "@/components/sidebar";
 import { Toolbar } from "@/components/toolbar";
 import { SearchBar } from "@/components/search-bar";
@@ -12,189 +13,10 @@ import { AIAssistant } from "@/components/ai-assistant";
 import { TitleBar } from "@/components/title-bar";
 import { CommandPalette } from "@/components/command-palette";
 import type { FileItem, ViewMode, SortBy, SortOrder } from "@/lib/types";
-import { Sparkles } from "lucide-react";
+import { Sparkles, AlertCircle, RefreshCw } from "lucide-react";
 
-// Mock data - in production this would come from the Python API
-const mockFiles: FileItem[] = [
-  {
-    id: "1",
-    path: "/documents/quarterly-report.pdf",
-    name: "Quarterly Report Q4 2025.pdf",
-    size: 2457600,
-    mimeType: "application/pdf",
-    modifiedAt: "2025-12-15T10:30:00Z",
-    title: "Quarterly Report Q4 2025",
-    summary: "Financial summary and projections for Q4 2025 including revenue analysis and market trends.",
-    tags: ["finance", "reports", "2025"],
-    starred: true,
-  },
-  {
-    id: "2",
-    path: "/images/team-photo.jpg",
-    name: "Team Photo 2025.jpg",
-    size: 4194304,
-    mimeType: "image/jpeg",
-    modifiedAt: "2025-11-20T14:45:00Z",
-    tags: ["photos", "team"],
-  },
-  {
-    id: "3",
-    path: "/documents/project-plan.docx",
-    name: "Project Plan - AI Integration.docx",
-    size: 524288,
-    mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    modifiedAt: "2025-12-10T09:15:00Z",
-    summary: "Detailed project plan for implementing AI features into the file management system.",
-    tags: ["planning", "AI", "project"],
-    starred: true,
-  },
-  {
-    id: "4",
-    path: "/spreadsheets/budget-2026.xlsx",
-    name: "Budget Forecast 2026.xlsx",
-    size: 1048576,
-    mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    modifiedAt: "2025-12-01T16:00:00Z",
-    tags: ["finance", "budget"],
-  },
-  {
-    id: "5",
-    path: "/images/product-mockup.png",
-    name: "Product Mockup v3.png",
-    size: 3145728,
-    mimeType: "image/png",
-    modifiedAt: "2025-12-08T11:20:00Z",
-    tags: ["design", "product"],
-    starred: true,
-  },
-  {
-    id: "6",
-    path: "/archives/legacy-data.zip",
-    name: "Legacy System Backup.zip",
-    size: 104857600,
-    mimeType: "application/zip",
-    modifiedAt: "2025-09-15T08:00:00Z",
-    tags: ["backup", "archive"],
-    trashed: true,
-  },
-  {
-    id: "7",
-    path: "/documents/meeting-notes.txt",
-    name: "Meeting Notes - Dec 12.txt",
-    size: 15360,
-    mimeType: "text/plain",
-    modifiedAt: "2025-12-12T15:30:00Z",
-    summary: "Discussion points and action items from the weekly team meeting.",
-    tags: ["meetings", "notes"],
-  },
-  {
-    id: "8",
-    path: "/videos/product-demo.mp4",
-    name: "Product Demo Video.mp4",
-    size: 52428800,
-    mimeType: "video/mp4",
-    modifiedAt: "2025-11-28T13:00:00Z",
-    tags: ["video", "product", "demo"],
-  },
-  {
-    id: "9",
-    path: "/audio/podcast-ep42.mp3",
-    name: "Tech Talk Podcast Ep42.mp3",
-    size: 31457280,
-    mimeType: "audio/mpeg",
-    modifiedAt: "2025-12-05T10:00:00Z",
-    tags: ["audio", "podcast"],
-  },
-  {
-    id: "10",
-    path: "/documents/api-docs.pdf",
-    name: "API Documentation v2.pdf",
-    size: 1572864,
-    mimeType: "application/pdf",
-    modifiedAt: "2025-12-14T17:45:00Z",
-    summary: "Complete API reference documentation for the AI File System endpoints.",
-    tags: ["documentation", "API", "technical"],
-  },
-  {
-    id: "11",
-    path: "/images/architecture-diagram.png",
-    name: "System Architecture.png",
-    size: 819200,
-    mimeType: "image/png",
-    modifiedAt: "2025-12-11T12:00:00Z",
-    tags: ["technical", "diagram"],
-  },
-  {
-    id: "12",
-    path: "/documents/user-research.pdf",
-    name: "User Research Findings.pdf",
-    size: 3670016,
-    mimeType: "application/pdf",
-    modifiedAt: "2025-12-07T09:30:00Z",
-    summary: "User interviews and usability testing results for the file management interface.",
-    tags: ["research", "UX"],
-  },
-  {
-    id: "13",
-    path: "/downloads/software-installer.exe",
-    name: "Software Installer v2.1.exe",
-    size: 85983232,
-    mimeType: "application/octet-stream",
-    modifiedAt: "2025-12-14T08:00:00Z",
-    tags: ["software", "installer"],
-  },
-  {
-    id: "14",
-    path: "/downloads/report-template.docx",
-    name: "Report Template.docx",
-    size: 245760,
-    mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    modifiedAt: "2025-12-13T16:30:00Z",
-    tags: ["template", "documents"],
-  },
-  {
-    id: "15",
-    path: "/trash/old-draft.txt",
-    name: "Old Draft.txt",
-    size: 8192,
-    mimeType: "text/plain",
-    modifiedAt: "2025-11-01T10:00:00Z",
-    tags: ["draft"],
-    trashed: true,
-  },
-];
-
-// Helper function to filter files based on active section
-function filterFilesBySection(files: FileItem[], section: string): FileItem[] {
-  // Don't filter trashed files unless explicitly viewing trash
-  const nonTrashedFiles = files.filter(f => !f.trashed);
-  
-  if (section === "home" || section === "browse") {
-    return nonTrashedFiles;
-  }
-  
-  if (section === "recent") {
-    // Sort by most recent and return top items
-    return [...nonTrashedFiles]
-      .sort((a, b) => new Date(b.modifiedAt).getTime() - new Date(a.modifiedAt).getTime())
-      .slice(0, 10);
-  }
-  
-  if (section === "starred") {
-    return nonTrashedFiles.filter(f => f.starred);
-  }
-  
-  if (section === "trash") {
-    return files.filter(f => f.trashed);
-  }
-  
-  if (section.startsWith("folder:")) {
-    const folderPath = section.replace("folder:", "");
-    return nonTrashedFiles.filter(f => f.path.startsWith(folderPath));
-  }
-  
-  return nonTrashedFiles;
-}
+// SWR fetcher function
+const fetcher = (url: string) => fetch(url).then(res => res.json());
 
 // Helper function to get section title
 function getSectionTitle(section: string): string {
@@ -212,13 +34,24 @@ function getSectionTitle(section: string): string {
   return "Files";
 }
 
+// Build API URL based on active section
+function buildApiUrl(section: string): string {
+  const baseUrl = "/api/files";
+  
+  if (section.startsWith("folder:")) {
+    const folderPath = section.replace("folder:", "");
+    return `${baseUrl}?path=${encodeURIComponent(folderPath)}&section=folder`;
+  }
+  
+  return `${baseUrl}?section=${encodeURIComponent(section)}`;
+}
+
 export default function HomePage() {
   const [activeSection, setActiveSection] = useState("home");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [sortBy, setSortBy] = useState<SortBy>("name");
   const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [files, setFiles] = useState<FileItem[]>(mockFiles);
   const [searchResults, setSearchResults] = useState<FileItem[] | null>(null);
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
   const [showDetailsPanel, setShowDetailsPanel] = useState(false);
@@ -232,6 +65,16 @@ export default function HomePage() {
     message: string;
   }>({ type: "idle", message: "" });
 
+  // Fetch files from backend using SWR
+  const apiUrl = buildApiUrl(activeSection);
+  const { data, error, isLoading, mutate } = useSWR(apiUrl, fetcher, {
+    refreshInterval: 5000, // Refresh every 5 seconds to catch file system changes
+    revalidateOnFocus: true,
+  });
+
+  const files: FileItem[] = data?.files || [];
+  const backendError = data?.error || error;
+
   // Keyboard shortcuts
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -244,9 +87,8 @@ export default function HomePage() {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  // Filter files based on active section, then apply search if present
-  const filteredFiles = filterFilesBySection(files, activeSection);
-  const displayFiles = searchResults || filteredFiles;
+  // Display files - use search results if available, otherwise use fetched files
+  const displayFiles = searchResults || files;
 
   const sortedFiles = [...displayFiles].sort((a, b) => {
     let comparison = 0;
@@ -271,34 +113,73 @@ export default function HomePage() {
     setIsSearching(true);
     setStatus({ type: "loading", message: "Searching..." });
 
-    // Simulate API call to Python backend
-    await new Promise((resolve) => setTimeout(resolve, 800));
+    try {
+      const response = await fetch(`/api/search?query=${encodeURIComponent(query)}&k=20`);
+      const searchData = await response.json();
 
-    // Mock semantic search results
-    const results = mockFiles
-      .filter(
-        (f) =>
-          f.name.toLowerCase().includes(query.toLowerCase()) ||
-          f.tags?.some((t) => t.toLowerCase().includes(query.toLowerCase())) ||
-          f.summary?.toLowerCase().includes(query.toLowerCase())
-      )
-      .map((f) => ({
-        ...f,
-        score: Math.random() * 0.4 + 0.6, // Mock relevance score
-      }))
-      .sort((a, b) => (b.score || 0) - (a.score || 0));
+      if (Array.isArray(searchData)) {
+        // Map search results to FileItem format
+        const results: FileItem[] = searchData.map((item: { path: string; title: string; score: number }, index: number) => ({
+          id: `search-${index}`,
+          path: item.path,
+          name: item.title || item.path.split('/').pop() || 'Unknown',
+          size: 0,
+          mimeType: 'application/octet-stream',
+          modifiedAt: new Date().toISOString(),
+          score: item.score,
+        }));
+        setSearchResults(results);
+        setStatus({
+          type: "success",
+          message: `Found ${results.length} result${results.length !== 1 ? "s" : ""}`,
+        });
+      } else {
+        // Fallback to client-side search if backend unavailable
+        const results = files
+          .filter(
+            (f) =>
+              f.name.toLowerCase().includes(query.toLowerCase()) ||
+              f.tags?.some((t) => t.toLowerCase().includes(query.toLowerCase())) ||
+              f.summary?.toLowerCase().includes(query.toLowerCase())
+          )
+          .map((f) => ({
+            ...f,
+            score: Math.random() * 0.4 + 0.6,
+          }))
+          .sort((a, b) => (b.score || 0) - (a.score || 0));
 
-    setSearchResults(results);
+        setSearchResults(results);
+        setStatus({
+          type: "success",
+          message: `Found ${results.length} result${results.length !== 1 ? "s" : ""} (local search)`,
+        });
+      }
+    } catch {
+      // Client-side fallback search
+      const results = files
+        .filter(
+          (f) =>
+            f.name.toLowerCase().includes(query.toLowerCase()) ||
+            f.tags?.some((t) => t.toLowerCase().includes(query.toLowerCase()))
+        )
+        .map((f) => ({
+          ...f,
+          score: Math.random() * 0.4 + 0.6,
+        }))
+        .sort((a, b) => (b.score || 0) - (a.score || 0));
+
+      setSearchResults(results);
+      setStatus({
+        type: "success",
+        message: `Found ${results.length} result${results.length !== 1 ? "s" : ""} (local)`,
+      });
+    }
+
     setIsSearching(false);
-    setStatus({
-      type: "success",
-      message: `Found ${results.length} result${results.length !== 1 ? "s" : ""}`,
-    });
-
     setTimeout(() => setStatus({ type: "idle", message: "" }), 3000);
-  }, []);
+  }, [files]);
 
-  const handleAICommand = useCallback(async (command: string) => {
+  const handleAICommand = useCallback(async () => {
     setShowAIAssistant(true);
   }, []);
 
@@ -306,35 +187,68 @@ export default function HomePage() {
     async (command: string): Promise<{ success: boolean; message: string }> => {
       setIsAIProcessing(true);
 
-      // Simulate AI processing
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      try {
+        // Call the intent API to understand the command
+        const intentResponse = await fetch('/api/intent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_input: command }),
+        });
+
+        if (intentResponse.ok) {
+          const intent = await intentResponse.json();
+          
+          // Execute based on intent
+          if (intent.action === 'move' && intent.dest) {
+            const moveResponse = await fetch('/api/action/move', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ query: intent.query || command, dest: intent.dest }),
+            });
+            
+            if (moveResponse.ok) {
+              const result = await moveResponse.json();
+              mutate(); // Refresh file list
+              setIsAIProcessing(false);
+              return {
+                success: true,
+                message: `Moved ${result.moved} files to ${result.dest}`,
+              };
+            }
+          } else if (intent.action === 'search' && intent.query) {
+            handleSearch(intent.query);
+            setIsAIProcessing(false);
+            return {
+              success: true,
+              message: `Searching for: ${intent.query}`,
+            };
+          }
+        }
+      } catch {
+        // Fall through to default response
+      }
 
       setIsAIProcessing(false);
-
-      // Mock different command responses
+      
+      // Default response for unhandled commands
       if (command.toLowerCase().includes("move")) {
         return {
           success: true,
-          message: `Successfully moved 5 files matching your criteria to the destination folder.`,
+          message: `To move files, please specify a destination. Example: "move documents about finance to /archive"`,
         };
-      } else if (command.toLowerCase().includes("find")) {
+      } else if (command.toLowerCase().includes("find") || command.toLowerCase().includes("search")) {
         return {
           success: true,
-          message: `Found 12 files matching your query. They have been highlighted in the file browser.`,
-        };
-      } else if (command.toLowerCase().includes("organize")) {
-        return {
-          success: true,
-          message: `Organized 23 files into 4 categories based on content analysis.`,
+          message: `Searching for files matching your query...`,
         };
       } else {
         return {
           success: true,
-          message: `Command processed. I've analyzed your files and found 8 relevant items.`,
+          message: `Command received. For best results, try: "find [query]", "move [files] to [destination]", or "organize [criteria]"`,
         };
       }
     },
-    []
+    [mutate, handleSearch]
   );
 
   const handleSelectFile = useCallback((id: string, multi: boolean) => {
@@ -368,13 +282,15 @@ export default function HomePage() {
   const handleRefresh = useCallback(() => {
     setSearchResults(null);
     setSelectedIds(new Set());
+    mutate(); // Refresh data from backend
     setStatus({ type: "success", message: "Refreshed" });
     setTimeout(() => setStatus({ type: "idle", message: "" }), 2000);
-  }, []);
+  }, [mutate]);
 
   const handleNavigate = useCallback((index: number) => {
     if (index === -1) {
       setCurrentPath(["Home"]);
+      setActiveSection("home");
     } else {
       setCurrentPath((prev) => prev.slice(0, index + 1));
     }
@@ -438,10 +354,39 @@ export default function HomePage() {
             onRefresh={handleRefresh}
           />
 
+          {/* Backend connection status banner */}
+          {backendError && (
+            <div className="px-4 py-3 bg-amber-500/10 border-b border-amber-500/20 flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-amber-500">Backend Not Connected</p>
+                <p className="text-xs text-[hsl(var(--muted-foreground))]">
+                  To connect to your local files, run the Python backend: <code className="bg-[hsl(var(--subtle))] px-1 py-0.5 rounded">python -m runtime.cli serve</code>
+                </p>
+              </div>
+              <button
+                onClick={handleRefresh}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-amber-500 hover:bg-amber-500/10 rounded-md transition-colors"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Retry
+              </button>
+            </div>
+          )}
+
           {/* File browser area */}
           <div className="flex-1 flex overflow-hidden">
             {/* File grid/list */}
             <div className="flex-1 overflow-auto">
+              {isLoading && (
+                <div className="flex items-center justify-center h-full">
+                  <div className="flex flex-col items-center gap-3">
+                    <RefreshCw className="w-8 h-8 text-[hsl(var(--primary))] animate-spin" />
+                    <p className="text-sm text-[hsl(var(--muted-foreground))]">Loading files...</p>
+                  </div>
+                </div>
+              )}
+              
               {searchResults !== null && (
                 <div className="px-4 py-2 bg-[hsl(var(--subtle))] border-b border-[hsl(var(--divider))]">
                   <p className="text-sm text-[hsl(var(--muted-foreground))]">
@@ -456,13 +401,32 @@ export default function HomePage() {
                   </p>
                 </div>
               )}
-              <FileGrid
-                files={sortedFiles}
-                viewMode={viewMode}
-                selectedIds={selectedIds}
-                onSelectFile={handleSelectFile}
-                onOpenFile={handleOpenFile}
-              />
+              
+              {!isLoading && sortedFiles.length === 0 && !backendError && (
+                <div className="flex flex-col items-center justify-center h-full text-center p-8">
+                  <div className="w-16 h-16 mb-4 rounded-full bg-[hsl(var(--subtle))] flex items-center justify-center">
+                    <Sparkles className="w-8 h-8 text-[hsl(var(--muted-foreground))]" />
+                  </div>
+                  <h3 className="text-lg font-medium mb-2">No files found</h3>
+                  <p className="text-sm text-[hsl(var(--muted-foreground))] max-w-md">
+                    {activeSection === "starred" 
+                      ? "You haven't starred any files yet. Star files to quickly access them here."
+                      : activeSection === "trash"
+                      ? "Trash is empty."
+                      : "Add files to your configured directory to see them here."}
+                  </p>
+                </div>
+              )}
+              
+              {!isLoading && sortedFiles.length > 0 && (
+                <FileGrid
+                  files={sortedFiles}
+                  viewMode={viewMode}
+                  selectedIds={selectedIds}
+                  onSelectFile={handleSelectFile}
+                  onOpenFile={handleOpenFile}
+                />
+              )}
             </div>
 
             {/* Details panel */}
