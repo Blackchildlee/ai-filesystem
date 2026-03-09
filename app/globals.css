@@ -1,0 +1,154 @@
+@import "tailwindcss";
+
+:root {
+  /* Microsoft Fluent Design - Light Theme */
+  --background: 0 0% 98%;
+  --foreground: 0 0% 9%;
+  
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 9%;
+  
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 9%;
+  
+  --primary: 207 90% 54%;
+  --primary-foreground: 0 0% 100%;
+  
+  --secondary: 0 0% 96%;
+  --secondary-foreground: 0 0% 9%;
+  
+  --muted: 0 0% 94%;
+  --muted-foreground: 0 0% 45%;
+  
+  --accent: 207 90% 54%;
+  --accent-foreground: 0 0% 100%;
+  
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  
+  --border: 0 0% 90%;
+  --input: 0 0% 90%;
+  --ring: 207 90% 54%;
+  
+  --radius: 0.5rem;
+  
+  /* Fluent-specific tokens */
+  --surface: 0 0% 100%;
+  --surface-elevated: 0 0% 100%;
+  --subtle: 0 0% 96%;
+  --divider: 0 0% 88%;
+}
+
+.dark {
+  /* Microsoft Fluent Design - Dark Theme (Windows 11) */
+  --background: 220 13% 10%;
+  --foreground: 0 0% 95%;
+  
+  --card: 220 13% 14%;
+  --card-foreground: 0 0% 95%;
+  
+  --popover: 220 13% 14%;
+  --popover-foreground: 0 0% 95%;
+  
+  --primary: 207 90% 54%;
+  --primary-foreground: 0 0% 100%;
+  
+  --secondary: 220 13% 18%;
+  --secondary-foreground: 0 0% 95%;
+  
+  --muted: 220 13% 18%;
+  --muted-foreground: 0 0% 60%;
+  
+  --accent: 207 90% 54%;
+  --accent-foreground: 0 0% 100%;
+  
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  
+  --border: 220 13% 20%;
+  --input: 220 13% 20%;
+  --ring: 207 90% 54%;
+  
+  /* Fluent-specific tokens - Dark */
+  --surface: 220 13% 14%;
+  --surface-elevated: 220 13% 18%;
+  --subtle: 220 13% 12%;
+  --divider: 220 13% 22%;
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* Fluent Acrylic Effect */
+.acrylic {
+  background: hsl(var(--surface) / 0.7);
+  backdrop-filter: blur(20px) saturate(125%);
+  -webkit-backdrop-filter: blur(20px) saturate(125%);
+}
+
+.dark .acrylic {
+  background: hsl(var(--surface) / 0.6);
+}
+
+/* Fluent Mica Effect */
+.mica {
+  background: hsl(var(--surface) / 0.85);
+  backdrop-filter: blur(60px) saturate(120%);
+  -webkit-backdrop-filter: blur(60px) saturate(120%);
+}
+
+/* Scrollbar styling - Fluent */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* Fluent focus ring */
+.fluent-focus:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+/* Fluent reveal effect base */
+.reveal-effect {
+  position: relative;
+  overflow: hidden;
+}
+
+.reveal-effect::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    hsl(var(--foreground) / 0.04) 0%,
+    transparent 50%
+  );
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.reveal-effect:hover::before {
+  opacity: 1;
+}
