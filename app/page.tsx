@@ -587,8 +587,8 @@ export default function HomePage() {
 
       {/* Folder Permission Modal */}
       <FolderPermissionModal
-        open={showPermissionModal}
-        onOpenChange={setShowPermissionModal}
+        isOpen={showPermissionModal}
+        onClose={() => setShowPermissionModal(false)}
         onGrantAccess={handleGrantAccess}
         isSupported={isSupported}
       />
