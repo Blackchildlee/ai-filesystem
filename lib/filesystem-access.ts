@@ -3,6 +3,16 @@
  * Supports both File System Access API and fallback for iframes
  */
 
+// Extend Window interface to include File System Access API
+declare global {
+  interface Window {
+    showDirectoryPicker?: (options?: {
+      mode?: 'read' | 'readwrite';
+      startIn?: FileSystemHandle | 'desktop' | 'documents' | 'downloads' | 'music' | 'pictures' | 'videos';
+    }) => Promise<FileSystemDirectoryHandle>;
+  }
+}
+
 export interface LocalFile {
   id: string;
   path: string;
