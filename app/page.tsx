@@ -26,6 +26,7 @@ const mockFiles: FileItem[] = [
     title: "Quarterly Report Q4 2025",
     summary: "Financial summary and projections for Q4 2025 including revenue analysis and market trends.",
     tags: ["finance", "reports", "2025"],
+    starred: true,
   },
   {
     id: "2",
@@ -45,6 +46,7 @@ const mockFiles: FileItem[] = [
     modifiedAt: "2025-12-10T09:15:00Z",
     summary: "Detailed project plan for implementing AI features into the file management system.",
     tags: ["planning", "AI", "project"],
+    starred: true,
   },
   {
     id: "4",
@@ -63,6 +65,7 @@ const mockFiles: FileItem[] = [
     mimeType: "image/png",
     modifiedAt: "2025-12-08T11:20:00Z",
     tags: ["design", "product"],
+    starred: true,
   },
   {
     id: "6",
@@ -72,6 +75,7 @@ const mockFiles: FileItem[] = [
     mimeType: "application/zip",
     modifiedAt: "2025-09-15T08:00:00Z",
     tags: ["backup", "archive"],
+    trashed: true,
   },
   {
     id: "7",
@@ -130,7 +134,83 @@ const mockFiles: FileItem[] = [
     summary: "User interviews and usability testing results for the file management interface.",
     tags: ["research", "UX"],
   },
+  {
+    id: "13",
+    path: "/downloads/software-installer.exe",
+    name: "Software Installer v2.1.exe",
+    size: 85983232,
+    mimeType: "application/octet-stream",
+    modifiedAt: "2025-12-14T08:00:00Z",
+    tags: ["software", "installer"],
+  },
+  {
+    id: "14",
+    path: "/downloads/report-template.docx",
+    name: "Report Template.docx",
+    size: 245760,
+    mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    modifiedAt: "2025-12-13T16:30:00Z",
+    tags: ["template", "documents"],
+  },
+  {
+    id: "15",
+    path: "/trash/old-draft.txt",
+    name: "Old Draft.txt",
+    size: 8192,
+    mimeType: "text/plain",
+    modifiedAt: "2025-11-01T10:00:00Z",
+    tags: ["draft"],
+    trashed: true,
+  },
 ];
+
+// Helper function to filter files based on active section
+function filterFilesBySection(files: FileItem[], section: string): FileItem[] {
+  // Don't filter trashed files unless explicitly viewing trash
+  const nonTrashedFiles = files.filter(f => !f.trashed);
+  
+  if (section === "home" || section === "browse") {
+    return nonTrashedFiles;
+  }
+  
+  if (section === "recent") {
+    // Sort by most recent and return top items
+    return [...nonTrashedFiles]
+      .sort((a, b) => new Date(b.modifiedAt).getTime() - new Date(a.modifiedAt).getTime())
+      .slice(0, 10);
+  }
+  
+  if (section === "starred") {
+    return nonTrashedFiles.filter(f => f.starred);
+  }
+  
+  if (section === "trash") {
+    return files.filter(f => f.trashed);
+  }
+  
+  if (section.startsWith("folder:")) {
+    const folderPath = section.replace("folder:", "");
+    return nonTrashedFiles.filter(f => f.path.startsWith(folderPath));
+  }
+  
+  return nonTrashedFiles;
+}
+
+// Helper function to get section title
+function getSectionTitle(section: string): string {
+  if (section === "home") return "Home";
+  if (section === "search") return "AI Search";
+  if (section === "browse") return "All Files";
+  if (section === "recent") return "Recent Files";
+  if (section === "starred") return "Starred";
+  if (section === "trash") return "Trash";
+  if (section.startsWith("folder:")) {
+    const folderPath = section.replace("folder:", "");
+    const folderName = folderPath.split("/").filter(Boolean).pop() || "Folder";
+    return folderName.charAt(0).toUpperCase() + folderName.slice(1);
+  }
+  return "Files";
+}
 
 export default function HomePage() {
   const [activeSection, setActiveSection] = useState("home");
@@ -164,7 +244,9 @@ export default function HomePage() {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  const displayFiles = searchResults || files;
+  // Filter files based on active section, then apply search if present
+  const filteredFiles = filterFilesBySection(files, activeSection);
+  const displayFiles = searchResults || filteredFiles;
 
   const sortedFiles = [...displayFiles].sort((a, b) => {
     let comparison = 0;
@@ -306,7 +388,23 @@ export default function HomePage() {
 
       <div className="flex-1 flex overflow-hidden">
         {/* Sidebar */}
-        <Sidebar activeSection={activeSection} onSectionChange={setActiveSection} />
+        <Sidebar 
+          activeSection={activeSection} 
+          onSectionChange={(section) => {
+            setActiveSection(section);
+            setSearchResults(null);
+            setSelectedIds(new Set());
+            // Update breadcrumb path based on section
+            const title = getSectionTitle(section);
+            if (section.startsWith("folder:")) {
+              const folderPath = section.replace("folder:", "");
+              const parts = folderPath.split("/").filter(Boolean);
+              setCurrentPath(["Home", ...parts.map(p => p.charAt(0).toUpperCase() + p.slice(1))]);
+            } else {
+              setCurrentPath([title]);
+            }
+          }} 
+        />
 
         {/* Main Content */}
         <main className="flex-1 flex flex-col min-w-0">

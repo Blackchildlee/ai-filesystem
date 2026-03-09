@@ -9,6 +9,8 @@ export interface FileItem {
   summary?: string;
   tags?: string[];
   score?: number;
+  starred?: boolean;
+  trashed?: boolean;
 }
 
 export interface SearchResult {
