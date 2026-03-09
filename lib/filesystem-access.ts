@@ -74,7 +74,7 @@ export function setCachedFiles(files: LocalFile[]): void {
 
 // Request permission to access a directory (for top-level windows)
 export async function requestDirectoryAccess(): Promise<FileSystemDirectoryHandle | null> {
-  if (!isFileSystemAccessSupported()) {
+  if (!isFileSystemAccessSupported() || !window.showDirectoryPicker) {
     throw new Error('File System Access API is not supported or blocked in iframes');
   }
 
