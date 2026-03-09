@@ -590,6 +590,14 @@ export default function HomePage() {
         isOpen={showPermissionModal}
         onClose={() => setShowPermissionModal(false)}
         onGrantAccess={handleGrantAccess}
+        onFilesSelected={(files, detectedFolders) => {
+          // Handle files selected via file input (iframe mode)
+          setLocalFiles(files);
+          setFolders(detectedFolders);
+          setIsConnected(true);
+          setRootFolderName("Selected Folder");
+          setStatus({ type: "success", message: `Loaded ${files.length} files` });
+        }}
         isSupported={isSupported}
       />
 

@@ -1,6 +1,6 @@
 /**
- * File System Access API service
- * Allows users to grant access to local folders via browser permission prompt
+ * File System Access service
+ * Supports both File System Access API and fallback for iframes
  */
 
 export interface LocalFile {
@@ -10,23 +10,41 @@ export interface LocalFile {
   size: number;
   mimeType: string;
   modifiedAt: string;
-  handle: FileSystemFileHandle;
+  file?: File;
+  handle?: FileSystemFileHandle;
 }
 
 export interface LocalFolder {
   id: string;
   name: string;
   path: string;
-  handle: FileSystemDirectoryHandle;
+  handle?: FileSystemDirectoryHandle;
 }
 
-// Check if File System Access API is supported
+// Check if File System Access API is supported AND we're not in an iframe
 export function isFileSystemAccessSupported(): boolean {
-  return typeof window !== 'undefined' && 'showDirectoryPicker' in window;
+  if (typeof window === 'undefined') return false;
+  
+  // Check if we're in an iframe (cross-origin)
+  const inIframe = window !== window.parent;
+  
+  // Even if showDirectoryPicker exists, it won't work in cross-origin iframes
+  return 'showDirectoryPicker' in window && !inIframe;
+}
+
+// Check if we're running in an iframe
+export function isInIframe(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window !== window.parent;
+  } catch {
+    return true; // If we can't access parent due to CORS, we're in an iframe
+  }
 }
 
 // Store the directory handle for persistence
 let rootDirectoryHandle: FileSystemDirectoryHandle | null = null;
+let cachedFiles: LocalFile[] = [];
 
 export function getRootHandle(): FileSystemDirectoryHandle | null {
   return rootDirectoryHandle;
@@ -36,54 +54,92 @@ export function setRootHandle(handle: FileSystemDirectoryHandle | null): void {
   rootDirectoryHandle = handle;
 }
 
-// Request permission to access a directory
+export function getCachedFiles(): LocalFile[] {
+  return cachedFiles;
+}
+
+export function setCachedFiles(files: LocalFile[]): void {
+  cachedFiles = files;
+}
+
+// Request permission to access a directory (for top-level windows)
 export async function requestDirectoryAccess(): Promise<FileSystemDirectoryHandle | null> {
   if (!isFileSystemAccessSupported()) {
-    throw new Error('File System Access API is not supported in this browser');
+    throw new Error('File System Access API is not supported or blocked in iframes');
   }
 
   try {
-    // Show directory picker - this triggers the browser's permission popup
     const handle = await window.showDirectoryPicker({
       mode: 'read',
     });
     
     rootDirectoryHandle = handle;
-    
-    // Try to persist the permission
-    if ('permissions' in navigator) {
-      try {
-        // @ts-expect-error - experimental API
-        await handle.requestPermission({ mode: 'read' });
-      } catch {
-        // Permission persistence not supported, that's okay
-      }
-    }
-    
     return handle;
   } catch (error) {
     if ((error as Error).name === 'AbortError') {
-      // User cancelled the picker
       return null;
     }
     throw error;
   }
 }
 
-// Check if we still have permission to the directory
-export async function verifyPermission(handle: FileSystemDirectoryHandle): Promise<boolean> {
-  try {
-    // @ts-expect-error - experimental API
-    const permission = await handle.queryPermission({ mode: 'read' });
-    if (permission === 'granted') {
-      return true;
+// Process files from a file input with webkitdirectory
+export function processFileInputFiles(fileList: FileList): { files: LocalFile[], folders: LocalFolder[] } {
+  const files: LocalFile[] = [];
+  const folderSet = new Set<string>();
+  
+  for (let i = 0; i < fileList.length; i++) {
+    const file = fileList[i];
+    
+    // webkitRelativePath gives us the full path including folder structure
+    const relativePath = (file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name;
+    const pathParts = relativePath.split('/');
+    
+    // Skip hidden files and common ignore patterns
+    if (pathParts.some(part => 
+      part.startsWith('.') || 
+      part === 'node_modules' || 
+      part === '__pycache__' ||
+      part === '.git'
+    )) {
+      continue;
     }
-    // @ts-expect-error - experimental API
-    const request = await handle.requestPermission({ mode: 'read' });
-    return request === 'granted';
-  } catch {
-    return false;
+    
+    // Track top-level folders
+    if (pathParts.length > 1) {
+      folderSet.add(pathParts[0]);
+      // Also track immediate subfolders for Quick Access
+      if (pathParts.length > 2) {
+        folderSet.add(`${pathParts[0]}/${pathParts[1]}`);
+      }
+    }
+    
+    const path = '/' + relativePath;
+    
+    files.push({
+      id: `local-${btoa(path).replace(/[+/=]/g, '')}`,
+      path,
+      name: file.name,
+      size: file.size,
+      mimeType: file.type || getMimeType(file.name),
+      modifiedAt: new Date(file.lastModified).toISOString(),
+      file,
+    });
   }
+  
+  // Build folder list from paths - only top-level folders
+  const folders: LocalFolder[] = Array.from(folderSet)
+    .filter(f => !f.includes('/')) // Only top-level
+    .map(name => ({
+      id: name,
+      name: name.replace(/[-_]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+      path: `/${name}`,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  
+  cachedFiles = files;
+  
+  return { files, folders };
 }
 
 // Get mime type from file extension
@@ -154,7 +210,7 @@ function getMimeType(filename: string): string {
   return mimeTypes[ext] || 'application/octet-stream';
 }
 
-// Recursively scan a directory and return all files
+// Recursively scan a directory (for File System Access API)
 export async function scanDirectory(
   handle: FileSystemDirectoryHandle,
   basePath: string = '',
@@ -171,7 +227,6 @@ export async function scanDirectory(
     for await (const entry of handle.values()) {
       const entryPath = basePath ? `${basePath}/${entry.name}` : `/${entry.name}`;
       
-      // Skip hidden files and common ignore patterns
       if (entry.name.startsWith('.') || 
           entry.name === 'node_modules' ||
           entry.name === '__pycache__' ||
@@ -206,6 +261,7 @@ export async function scanDirectory(
     // Handle permission errors gracefully
   }
   
+  cachedFiles = files;
   return files;
 }
 
@@ -234,17 +290,24 @@ export async function getTopLevelFolders(handle: FileSystemDirectoryHandle): Pro
 }
 
 // Read file content (for AI processing)
-export async function readFileContent(handle: FileSystemFileHandle): Promise<string> {
-  const file = await handle.getFile();
+export async function readFileContent(file: LocalFile): Promise<string> {
+  let fileObj: File | undefined;
   
-  // Only read text-based files
+  if (file.file) {
+    fileObj = file.file;
+  } else if (file.handle) {
+    fileObj = await file.handle.getFile();
+  }
+  
+  if (!fileObj) return '';
+  
   const textTypes = ['text/', 'application/json', 'application/xml', 'application/javascript'];
-  const isText = textTypes.some(type => file.type.startsWith(type)) || 
-                 file.name.match(/\.(txt|md|json|xml|csv|html|css|js|ts|jsx|tsx|py|java|c|cpp|go|rs|sh|yml|yaml)$/i);
+  const isText = textTypes.some(type => fileObj!.type.startsWith(type)) || 
+                 fileObj.name.match(/\.(txt|md|json|xml|csv|html|css|js|ts|jsx|tsx|py|java|c|cpp|go|rs|sh|yml|yaml)$/i);
   
-  if (!isText || file.size > 1024 * 1024) { // Skip files larger than 1MB
+  if (!isText || fileObj.size > 1024 * 1024) {
     return '';
   }
   
-  return await file.text();
+  return await fileObj.text();
 }
