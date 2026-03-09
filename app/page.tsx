@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import dynamic from "next/dynamic";
 import { Sidebar } from "@/components/sidebar";
 import { Toolbar } from "@/components/toolbar";
 import { SearchBar } from "@/components/search-bar";
@@ -57,6 +58,8 @@ function localFileToFileItem(file: LocalFile, starredIds: Set<string>): FileItem
 }
 
 export default function HomePage() {
+  // Track if component is mounted (for hydration safety)
+  const [isMounted, setIsMounted] = useState(false);
   const [activeSection, setActiveSection] = useState("home");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [sortBy, setSortBy] = useState<SortBy>("name");
@@ -84,6 +87,11 @@ export default function HomePage() {
   const [folders, setFolders] = useState<LocalFolder[]>([]);
   const [rootFolderName, setRootFolderName] = useState<string>("");
   const [isSupported, setIsSupported] = useState(true);
+
+  // Set mounted state after initial render to avoid hydration mismatch
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Check File System Access API support on mount
   useEffect(() => {
@@ -357,6 +365,24 @@ export default function HomePage() {
       return next;
     });
   }, []);
+
+  // Show loading skeleton during SSR/initial hydration to prevent mismatch
+  if (!isMounted) {
+    return (
+      <div className="h-screen flex flex-col bg-[hsl(var(--background))]">
+        <div className="h-8 bg-[hsl(var(--surface))] border-b border-[hsl(var(--divider))]" />
+        <div className="flex-1 flex">
+          <div className="w-60 bg-[hsl(var(--surface))] border-r border-[hsl(var(--divider))]" />
+          <div className="flex-1 flex items-center justify-center">
+            <div className="flex flex-col items-center gap-3">
+              <RefreshCw className="w-8 h-8 text-[hsl(var(--primary))] animate-spin" />
+              <p className="text-sm text-[hsl(var(--muted-foreground))]">Loading...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen flex flex-col bg-[hsl(var(--background))]">
