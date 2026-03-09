@@ -234,7 +234,7 @@ export async function scanDirectory(
   }
   
   try {
-    for await (const entry of handle.values()) {
+    for await (const [name, entry] of handle.entries()) {
       const entryPath = basePath ? `${basePath}/${entry.name}` : `/${entry.name}`;
       
       if (entry.name.startsWith('.') || 
