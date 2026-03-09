@@ -1,8 +1,10 @@
 from pathlib import Path
+import os
 
 class Config:
-    # Root directory to watch / index
-    ROOT_DIR: Path = Path("./my_docs")
+    # Root directory to watch / index - can be configured via environment variable
+    # Defaults to user's home directory if not specified
+    ROOT_DIR: Path = Path(os.environ.get("AI_FS_ROOT", os.path.expanduser("~")))
 
     # Storage locations
     DATA_DIR: Path = Path("./data")
