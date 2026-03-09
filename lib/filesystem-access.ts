@@ -234,7 +234,7 @@ export async function scanDirectory(
   }
   
   try {
-    for await (const entry of handle) {
+    for await (const entry of handle.entries()) {
       const entryPath = basePath ? `${basePath}/${entry.name}` : `/${entry.name}`;
       
       if (entry.name.startsWith('.') || 
@@ -280,7 +280,7 @@ export async function getTopLevelFolders(handle: FileSystemDirectoryHandle): Pro
   const folders: LocalFolder[] = [];
   
   try {
-    for await (const entry of handle) {
+    for await (const entry of handle.entries()) {
       if (entry.kind === 'directory' && !entry.name.startsWith('.')) {
         if (entry.name !== 'node_modules' && entry.name !== '__pycache__') {
           folders.push({
